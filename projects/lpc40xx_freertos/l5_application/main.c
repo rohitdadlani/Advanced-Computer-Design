@@ -14,9 +14,24 @@ static void create_uart_task(void);
 static void blink_task(void *params);
 static void uart_task(void *params);
 
+typedef struct {
+  float f1; // 4 bytes
+  char c1;  // 1 byte
+  float f2;
+  char c2;
+} __attribute__((packed)) my_s;
+
 int main(void) {
   create_blinky_tasks();
   create_uart_task();
+
+  my_s s;
+  // printf("Hello World");
+
+  printf("Size : %d bytes\n"
+         "floats 0x%p 0x%p\n"
+         "chars  0x%p 0x%p\n",
+         sizeof(s), &s.f1, &s.f2, &s.c1, &s.c2);
 
   // If you have the ESP32 wifi module soldered on the board, you can try uncommenting this code
   // See esp32/README.md for more details
