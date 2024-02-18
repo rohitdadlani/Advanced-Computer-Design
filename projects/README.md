@@ -1,17 +1,70 @@
-Multiple Tasks Assignment
+This folder contains sample projects that you can build
+
+## lpc40xx_freertos
+
+* This the primary LPC40xx project with all of the sources
+* This is the default project that gets compiled when you simply type `scons` without any arguments
+
+Build the project by using any of these commands:
+```
+scons
+
+scons --project=lpc40xx_freertos
+
+# Build without any printf/scanf of float (saves program flash space, and is faster to program)
+scons --project=lpc40xx_freertos --no-float-format
+
+# Build without unit tests
+scons --project=lpc40xx_freertos --no-float-format --no-unit-test
+
+# Build with multiple threads on your machine
+scons --project=lpc40xx_freertos --no-float-format --no-unit-test -j32
+
+```
+
+## lpc40xx_cmpe30
+
+This is the "simple" main control loop project setup just for CmpE30 which is a freshmen level class at San Jose State University. It re-uses all of the code from `lpc40xx_freertos` except that it has its own main function override.
 
 
-According to given steps I have performed the tasks with differnet Priority.
-1- Task 1 = 1 (priority value), Task 2 = 1 (priority value).
-In this scenario the output here in 1 millisecond there were 3.8 characters were printed. So if there were slight difference occurs in the time the other value get printed. So, thats why we get this output.
-![alt text](Task1.PNG)
+Build the project by using any of these commands:
+```
+scons
 
-2- Task 1 = 1 (priority value), Task 2 = 2 (priority value).
-I this scenario also there were 3.8 characters were print in 1ms. So, we have until 3 to 4 characters to come up with values. Sometimes it comes from 3rd character or sometime comes from 4th character.
-So here the priority of task 2 is higher so that prints first after 3rd character.
-![alt text](Task12.PNG)
+scons --project=lpc40xx_cmpe30
+```
 
-3- Task 1 = 2 (priority value), Task 2 = 1 (priority value).
-I this scenario also there were 3.8 characters were print in 1ms. So, we have until 3 to 4 characters to come up with values. Sometimes it comes from 3rd character or sometime comes from 4th character.
-So here the priority of task 1 is higher so that prints first after 3rd character.
-![alt text](Task21.PNG)
+## x86_freertos
+
+This is the FreeRTOS "simulator" on your host machine. For example, you can run a program with multiple FreeRTOS tasks on your Mac or Linux machine (or maybe even windows?)
+
+Use this project to:
+
+* Learn FreeRTOS API
+* Experiment with multiple FreeRTOS tasks or queues
+
+
+```
+# Compile
+scons --project=x86_freertos
+
+# Run the executable
+_build_x86_freertos/./x86_freertos.exe
+```
+
+## x86_sandbox
+
+This is to compile a program on your host machine. For example, you can compile an executable that runs on your Mac or Linux machine (or maybe even windows?)
+
+```
+# Compile
+scons --project=x86_sandbox
+
+# Run the executable
+_build_x86_sandbox/./x86_sandbox.exe
+```
+
+Use this project to:
+
+* Compile a program for your host machine
+* Run unit-tests for code modules
