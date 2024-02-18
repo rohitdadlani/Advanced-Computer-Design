@@ -18,6 +18,8 @@ int main(void) {
   create_blinky_tasks();
   create_uart_task();
 
+  printf("Hello World");
+
   // If you have the ESP32 wifi module soldered on the board, you can try uncommenting this code
   // See esp32/README.md for more details
   // uart3_init();                                                                     // Also include:  uart3_init.h
