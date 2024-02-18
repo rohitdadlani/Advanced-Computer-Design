@@ -14,24 +14,36 @@ static void create_uart_task(void);
 static void blink_task(void *params);
 static void uart_task(void *params);
 
+static void task_one(void *task_one);
+static void task_two(void *task_two);
+
+/*
 typedef struct {
   float f1; // 4 bytes
   char c1;  // 1 byte
   float f2;
   char c2;
 } __attribute__((packed)) my_s;
+*/
 
 int main(void) {
   create_blinky_tasks();
   create_uart_task();
 
-  my_s s;
-  // printf("Hello World");
+  xTaskCreate(task_one, "Task 1", 2048, NULL, 2, NULL);
+  xTaskCreate(task_two, "Task 2", 2048, NULL, 1, NULL);
+  vTaskStartScheduler();
 
-  printf("Size : %d bytes\n"
-         "floats 0x%p 0x%p\n"
-         "chars  0x%p 0x%p\n",
-         sizeof(s), &s.f1, &s.f2, &s.c1, &s.c2);
+  /*
+    my_s s;
+    // printf("Hello World");
+
+    printf("Size : %d bytes\n"
+           "floats 0x%p 0x%p\n"
+           "chars  0x%p 0x%p\n",
+           sizeof(s), &s.f1, &s.f2, &s.c1, &s.c2);
+
+  */
 
   // If you have the ESP32 wifi module soldered on the board, you can try uncommenting this code
   // See esp32/README.md for more details
@@ -70,6 +82,24 @@ static void create_blinky_tasks(void) {
   periodic_scheduler__initialize();
   UNUSED(blink_task);
 #endif
+}
+
+static void task_one(void *task_parameter) {
+  while (true) {
+    // Read existing main.c regarding when we should use fprintf(stderr...) in place of printf()
+    // For this lab, we will use fprintf(stderr, ...)
+    fprintf(stderr, "AAAAAAAAAAAA");
+
+    // Sleep for 100ms
+    vTaskDelay(100);
+  }
+}
+
+static void task_two(void *task_parameter) {
+  while (true) {
+    fprintf(stderr, "bbbbbbbbbbbb");
+    vTaskDelay(100);
+  }
 }
 
 static void create_uart_task(void) {
