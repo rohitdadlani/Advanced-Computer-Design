@@ -1,6 +1,9 @@
 #include <stdio.h>
 
 #include "FreeRTOS.h"
+#include "LPC40xx.h"
+#include "gpio_lab.h"
+
 #include "task.h"
 
 #include "board_io.h"
@@ -14,9 +17,75 @@ static void create_uart_task(void);
 static void blink_task(void *params);
 static void uart_task(void *params);
 
+typedef struct {
+  uint8_t port;
+  uint8_t pin;
+} port_pin_s;
+
+void led_task(void *pvParameters) {
+
+  LPC_IOCON->P1_18 &= ~0x07;   // Set IOCON MUX function to 000
+  LPC_GPIO1->DIR |= (1 << 18); // Set DIR register bit for LED port pin to output
+
+  while (true) {
+    LPC_GPIO1->PIN &= ~(1 << 18); // Set PIN register bit to 0 to turn ON LED (active low)
+    vTaskDelay(500);
+
+    LPC_GPIO1->PIN |= (1 << 18); // Set PIN register bit to 1 to turn OFF LED
+    vTaskDelay(500);
+  }
+
+  const port_pin_s *led = (port_pin_s *)(pvParameters);
+
+  gpio0__set_as_output(led->pin); // Set the LED GPIO as output
+
+  while (true) {
+    gpio0__set_high(led->pin);
+    vTaskDelay(100);
+    gpio0__set_low(led->pin);
+    vTaskDelay(100);
+  }
+
+  /*
+   // Choose one of the onboard LEDS by looking into schematics and write code for the below
+   LPC_IOCON->P2_0 &= ~0x07;
+
+   LPC_GPIO2->DIR |= (1 << 0);
+
+   while (true) {
+      LPC_GPIO2->PIN &= ~(1 << 0);
+      vTaskDelay(500);
+ 
+
+
+
+
+      LPC_GPIO2->PIN |= (1 << 0);
+      vTaskDelay(500);
+  }
+  */
+}
+
 int main(void) {
   create_blinky_tasks();
   create_uart_task();
+
+  xTaskCreate(led_task, "led", 2048 / sizeof(void *), NULL, PRIORITY_LOW, NULL);
+
+  static port_pin_s led0 = {.port = 0, .pin = 18}; // Change to your LED pin
+  static port_pin_s led1 = {.port = 0, .pin = 24}; // Change to your LED pin
+
+  xTaskCreate(led_task, "LED0", 2048 / sizeof(void *), &led0, PRIORITY_LOW, NULL);
+  xTaskCreate(led_task, "LED1", 2048 / sizeof(void *), &led1, PRIORITY_LOW, NULL);
+
+  // Start the scheduler
+  vTaskStartScheduler();
+
+  // If all is well, the scheduler will now be running, and the following line will never be reached.
+  // If the following line does execute, then there was insufficient FreeRTOS heap memory available for the idle and/or
+  // timer tasks to be created.
+
+  // xTaskCreate(led_task, “led1”, 2048 / sizeof(void *), NULL, 1, NULL);
 
   // If you have the ESP32 wifi module soldered on the board, you can try uncommenting this code
   // See esp32/README.md for more details
@@ -25,8 +94,9 @@ int main(void) {
 
   puts("Starting RTOS");
   vTaskStartScheduler(); // This function never returns unless RTOS scheduler runs out of memory and fails
-
-  return 0;
+  for (;;)
+    ;
+  return 0; // Should not reach here
 }
 
 static void create_blinky_tasks(void) {
