@@ -8,11 +8,43 @@
 #include "periodic_scheduler.h"
 #include "sj2_cli.h"
 
+#include "gpio_thislab.h"
+#include "lpc40xx.h"
+#include "lpc_peripherals.h"
+#include "semphr.h"
+
 // 'static' to make these functions 'private' to this file
 static void create_blinky_tasks(void);
 static void create_uart_task(void);
 static void blink_task(void *params);
 static void uart_task(void *params);
+
+static SemaphoreHandle_t switch_pressed_signal;
+
+static uint8_t SW3 = 30;
+static uint8_t led3 = 24;
+
+void sleep_on_sem_task(void *p) {
+
+  while (1) {
+    if (xSemaphoreTake(switch_pressed_signal, 1000)) {
+      vTaskDelay(100);
+      LPC_GPIO1->SET = (1 << led3);
+      vTaskDelay(100);
+      LPC_GPIO1->CLR = (1 << led3);
+    }
+  }
+}
+
+void interrupt_from_pin_29(void) {
+  fprintf(stderr, "ISR Entry from pin 29\n");
+  xSemaphoreGiveFromISR(switch_pressed_signal, NULL);
+}
+
+void interrupt_from_pin_30(void) {
+  fprintf(stderr, "ISR Entry from pin 30\n");
+  xSemaphoreGiveFromISR(switch_pressed_signal, NULL);
+}
 
 int main(void) {
   create_blinky_tasks();
@@ -24,6 +56,14 @@ int main(void) {
   // xTaskCreate(esp32_tcp_hello_world_task, "uart3", 1000, NULL, PRIORITY_LOW, NULL); // Include esp32_task.h
 
   puts("Starting RTOS");
+
+  switch_pressed_signal = xSemaphoreCreateBinary();
+  xTaskCreate(sleep_on_sem_task, "sem", (512U * 4) / sizeof(void *), NULL, PRIORITY_LOW, NULL);
+
+  gpio0__attach_interrupt(29, GPIO_INTR__FALLING_EDGE, interrupt_from_pin_29);
+  gpio0__attach_interrupt(30, GPIO_INTR__RISING_EDGE, interrupt_from_pin_30);
+  lpc_peripheral__enable_interrupt(LPC_PERIPHERAL__GPIO, gpio0__interrupt_dispatcher, "Interrupt");
+
   vTaskStartScheduler(); // This function never returns unless RTOS scheduler runs out of memory and fails
 
   return 0;

@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "trip.h": "c"
+        "trip.h": "c",
+        "stdio.h": "c",
+        "*.tcc": "c"
     }
 }
