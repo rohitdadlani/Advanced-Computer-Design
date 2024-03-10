@@ -18,6 +18,8 @@ void adc__initialize(void) {
   const uint32_t enable_adc_mask = (1 << 21);
   LPC_ADC->CR = enable_adc_mask;
 
+  LPC_SC->PCONP |= (1 << 12);
+
   const uint32_t max_adc_clock = (12 * 1000UL * 1000UL); // 12.4Mhz : max ADC clock in datasheet for lpc40xx
   const uint32_t adc_clock = clock__get_peripheral_clock_hz();
 
@@ -50,4 +52,37 @@ uint16_t adc__get_adc_value(adc_channel_e channel_num) {
   }
 
   return result;
+}
+
+void adc_pin_initialize(void) {
+  // Example for LPC1768/LPC40xx for pin P0.23 as ADC input
+  LPC_IOCON->P0_23 &= ~0x07; // Clear function bits
+  LPC_IOCON->P0_23 |= 0x01;  // Set function bits for ADC (refer to user manual for correct value)
+
+  // Disable digital mode for this pin, if applicable
+  LPC_IOCON->P0_23 &= ~(1 << 7); // AD0[0] on P0.23
+}
+
+void adc__enable_burst_mode(void) {
+  // Set the burst mode bit in the Control Register (CR)
+  // This is a placeholder, replace it with your specific microcontroller's register and bit
+  LPC_ADC->CR |= (1 << 16); // Set BURST bit in CR register to 1
+}
+
+uint16_t adc__get_channel_reading_with_burst_mode(uint8_t channel_number) {
+  // Return an ADC value from the specified channel in burst mode
+  // This will require reading from a different register than in non-burst mode
+  // Placeholder return
+  // Select channel - set the channel bit(s) and start conversion
+  LPC_ADC->CR &= ~0xFF;                 // Clear channel selection
+  LPC_ADC->CR |= (1 << channel_number); // Select channel
+
+  // Wait for conversion to complete
+  while (!(LPC_ADC->GDR & (1 << 31)))
+    ; // Wait for DONE bit
+
+  // Read the value
+  uint16_t adc_value = (LPC_ADC->GDR >> 4) & 0xFFF; // Extract the 12-bit ADC value
+
+  return adc_value;
 }

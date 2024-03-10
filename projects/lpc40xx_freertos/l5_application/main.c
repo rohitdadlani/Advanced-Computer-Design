@@ -8,11 +8,75 @@
 #include "periodic_scheduler.h"
 #include "sj2_cli.h"
 
+#include "pwm1.h"
+#include "queue.h"
+#include "adc.h"
+
 // 'static' to make these functions 'private' to this file
 static void create_blinky_tasks(void);
 static void create_uart_task(void);
 static void blink_task(void *params);
 static void uart_task(void *params);
+
+static QueueHandle_t adc_to_pwm_task_queue;
+
+void pwm_task(void *p) {
+  pwm1__init_single_edge(1000); // Initialize PWM1 for 1kHz frequency
+
+  // Configure the pin for PWM functionality
+  // This is a pseudo-function, replace it with your specific microcontroller's function call
+  pin_configure_pwm_channel_as_io_pin();
+
+  // Set initial duty cycle to 50%
+  pwm1__set_duty_cycle(PWM1__2_0, 50);
+
+  int adc_reading = 0;
+
+  uint8_t percent = 0;
+  while (1) {
+    pwm1__set_duty_cycle(PWM1__2_0, percent);
+
+    if (xQueueReceive(adc_to_pwm_task_queue, &adc_reading, portMAX_DELAY) == pdPASS) {
+
+      // Use the ADC value to adjust PWM duty cycle
+      // Placeholder for setting PWM duty cycle - replace with actual code
+    }
+
+    if (++percent > 100) {
+      percent = 0;
+    }
+
+    vTaskDelay(100);
+  }
+}
+
+void adc_task(void *p) {
+  adc_pin_initialize();
+  adc__initialize();
+  adc__enable_burst_mode();
+
+  int adc_reading = 0;
+
+  while (1) {
+    uint16_t adc_value = adc__get_channel_reading_with_burst_mode(ADC_CHANNEL_YOUR_CHOICE);
+
+    adc_reading = (adc_reading + 1) % 1024;
+
+    if (xQueueSend(adc_to_pwm_task_queue, &adc_reading, portMAX_DELAY) != pdPASS) {
+      // Handle failed send, maybe the queue is full
+    }
+
+    // Process the ADC value, e.g., print it or send it to another task
+    vTaskDelay(pdMS_TO_TICKS(100)); // Sample every 100ms
+  }
+}
+
+/*
+void main(void) {
+  xTaskCreate(adc_task, "ADC Task", 1024, NULL, 1, NULL);
+  vTaskStartScheduler();
+}
+*/
 
 int main(void) {
   create_blinky_tasks();
@@ -24,7 +88,22 @@ int main(void) {
   // xTaskCreate(esp32_tcp_hello_world_task, "uart3", 1000, NULL, PRIORITY_LOW, NULL); // Include esp32_task.h
 
   puts("Starting RTOS");
+
+  xTaskCreate(pwm_task, "pwm_task", 1024, NULL, 1, NULL);
+
+  xTaskCreate(adc_task, "ADC Task", 1024, NULL, 1, NULL);
+
+  adc_to_pwm_task_queue = xQueueCreate(5, sizeof(int));
+
+  // Task creation
+  xTaskCreate(adc_task, "ADC Task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+  xTaskCreate(pwm_task, "PWM Task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+
   vTaskStartScheduler(); // This function never returns unless RTOS scheduler runs out of memory and fails
+
+  // Your program should never reach here
+  for (;;)
+    ;
 
   return 0;
 }
