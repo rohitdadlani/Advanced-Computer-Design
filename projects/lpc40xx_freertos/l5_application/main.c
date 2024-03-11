@@ -29,6 +29,80 @@ int main(void) {
   return 0;
 }
 
+// Assuming P1.10 for CS
+#define ADESTO_FLASH_CS_PORT 1
+#define ADESTO_FLASH_CS_PIN 10
+
+void adesto_cs_init(void) {
+  LPC_GPIO1->DIR |= (1 << ADESTO_FLASH_CS_PIN); // Set as output
+  adesto_ds();                                  // Deselect the flash by default
+}
+
+void adesto_cs(void) {
+  LPC_GPIO1->CLR = (1 << ADESTO_FLASH_CS_PIN); // Activate CS (active low)
+}
+
+void adesto_ds(void) {
+  LPC_GPIO1->SET = (1 << ADESTO_FLASH_CS_PIN); // Deactivate CS (set high)
+}
+
+adesto_flash_id_s adesto_read_signature(void) {
+  adesto_flash_id_s data = {0};
+
+  adesto_cs();
+
+  ssp2__exchange_byte(0x9F);                        // Send "Read ID" command (0x9F)
+  data.manufacturer_id = ssp2__exchange_byte(0xFF); // Dummy byte for clocking out response
+  data.device_id_1 = ssp2__exchange_byte(0xFF);
+  data.device_id_2 = ssp2__exchange_byte(0xFF);
+  data.extended_device_id = ssp2__exchange_byte(0xFF);
+
+  adesto_ds();
+
+  return data;
+}
+
+void configure_ssp2_pins(void) {
+  // Example pin configuration
+  LPC_IOCON->P1_0 = 0x4; // SCK2 function
+  LPC_IOCON->P1_1 = 0x4; // MOSI2 function
+  LPC_IOCON->P1_4 = 0x4; // MISO2 function
+}
+
+void spi_task(void *p) {
+  const uint32_t spi_clock_mhz = 24;
+
+  configure_ssp2_pins();     // Configure SSP2 pin functions
+  adesto_cs_init();          // Initialize CS GPIO
+  ssp2__init(spi_clock_mhz); // Initialize SSP2
+
+  while (1) {
+    adesto_flash_id_s id = adesto_read_signature();
+
+    // Example printf - adjust based on your printf function
+    printf("Manufacturer ID: 0x%X, Device ID: 0x%X 0x%X, Extended Device ID: 0x%X\n", id.manufacturer_id,
+           id.device_id_1, id.device_id_2, id.extended_device_id);
+
+    vTaskDelay(500);
+  }
+}
+
+SemaphoreHandle_t spi_mutex;
+
+void spi_init() {
+  spi_mutex = xSemaphoreCreateMutex();
+  ssp2__init(24); // Initialize SPI with desired clock rate
+  // Don't forget to configure SSP2 pins and Adesto flash CS GPIO as shown previously
+}
+
+void adesto_read_signature_with_mutex(void) {
+  if (xSemaphoreTake(spi_mutex, portMAX_DELAY)) {
+    // Your existing adesto_read_signature code here
+
+    xSemaphoreGive(spi_mutex);
+  }
+}
+
 static void create_blinky_tasks(void) {
   /**
    * Use '#if (1)' if you wish to observe how two tasks can blink LEDs
